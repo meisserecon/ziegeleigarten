@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="de-DE" class="no-js">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="profile" href="https://gmpg.org/xfn/11">
+		<script>(function(html){html.className = html.className.replace(/\bno-js\b/,'js')})(document.documentElement);</script>
+<title></title>
+<meta name='robots' content='max-image-preview:large' />
+
+<!-- Async WordPress.com Remote Login -->
+<script id="wpcom_remote_login_js">
+var wpcom_remote_login_extra_auth = '';
+function wpcom_remote_login_remove_dom_node_id( element_id ) {
+	var dom_node = document.getElementById( element_id );
+	if ( dom_node ) { dom_node.parentNode.removeChild( dom_node ); }
+}
+function wpcom_remote_login_remove_dom_node_classes( class_name ) {
+	var dom_nodes = document.querySelectorAll( '.' + class_name );
+	for ( var i = 0; i < dom_nodes.length; i++ ) {
+		dom_nodes[ i ].parentNode.removeChild( dom_nodes[ i ] );
+	}
+}
+function wpcom_remote_login_final_cleanup() {
+	wpcom_remote_login_remove_dom_node_classes( "wpcom_remote_login_msg" );
+	wpcom_remote_login_remove_dom_node_id( "wpcom_remote_login_key" );
+	wpcom_remote_login_remove_dom_node_id( "wpcom_remote_login_validate" );
+	wpcom_remote_login_remove_dom_node_id( "wpcom_remote_login_js" );
+	wpcom_remote_login_remove_dom_node_id( "wpcom_request_access_iframe" );
+	wpcom_remote_login_remove_dom_node_id( "wpcom_request_access_styles" );
+}
+
+// Watch for messages back from the remote login
+window.addEventListener( "message", function( e ) {
+	if ( e.origin === "https://r-login.wordpress.com" ) {
+		var data = {};
+		try {
+			data = JSON.parse( e.data );
+		} catch( e ) {
+			wpcom_remote_login_final_cleanup();
+			return;
+		}
+
+		if ( data.msg === 'LOGIN' ) {
+			// Clean up the login check iframe
+			wpcom_remote_login_remove_dom_node_id( "wpcom_remote_login_key" );
+
+			var id_regex = new RegExp( /^[0-9]+$/ );
+			var token_regex = new RegExp( /^.*|.*|.*$/ );
+			if (
+				token_regex.test( data.token )
+				&& id_regex.test( data.wpcomid )
+			) {
+				// We have everything we need to ask for a login
+				var script = document.createElement( "script" );
+				script.setAttribute( "id", "wpcom_remote_login_validate" );
+				script.src = '/remote-login.php?wpcom_remote_login=validate'
+					+ '&wpcomid=' + data.wpcomid
+					+ '&token=' + encodeURIComponent( data.token )
+					+ '&host=' + window.location.protocol
+					+ '//' + window.location.hostname
+					+ '&postid=433'
+					+ '&is_singular=';
+				document.body.appendChild( script );
+			}
+
+			return;
+		}
+
+		// Safari ITP, not logged in, so redirect
+		if ( data.msg === 'LOGIN-REDIRECT' ) {
+			window.location = 'https://wordpress.com/log-in?redirect_to=' + window.location.href;
+			return;
+		}
+
+		// Safari ITP, storage access failed, remove the request
+		if ( data.msg === 'LOGIN-REMOVE' ) {
+			var css_zap = 'html { -webkit-transition: margin-top 1s; transition: margin-top 1s; } /* 9001 */ html { margin-top: 0 !important; } * html body { margin-top: 0 !important; } @media screen and ( max-width: 782px ) { html { margin-top: 0 !important; } * html body { margin-top: 0 !important; } }';
+			var style_zap = document.createElement( 'style' );
+			style_zap.type = 'text/css';
+			style_zap.appendChild( document.createTextNode( css_zap ) );
+			document.body.appendChild( style_zap );
+
+			var e = document.getElementById( 'wpcom_request_access_iframe' );
+			e.parentNode.removeChild( e );
+
+			document.cookie = 'wordpress_com_login_access=denied; path=/; max-age=31536000';
+
+			return;
+		}
+
+		// Safari ITP
+		if ( data.msg === 'REQUEST_ACCESS' ) {
+			console.log( 'request access: safari' );
+
+			// Check ITP iframe enable/disable knob
+			if ( wpcom_remote_login_extra_auth !== 'safari_itp_iframe' ) {
+				return;
+			}
+
+			// If we are in a "private window" there is no ITP.
+			var private_window = false;
+			try {
+				var opendb = window.openDatabase( null, null, null, null );
+			} catch( e ) {
+				private_window = true;
+			}
+
+			if ( private_window ) {
+				console.log( 'private window' );
+				return;
+			}
+
+			var iframe = document.createElement( 'iframe' );
+			iframe.id = 'wpcom_request_access_iframe';
+			iframe.setAttribute( 'scrolling', 'no' );
+			iframe.setAttribute( 'sandbox', 'allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-top-navigation-by-user-activation' );
+			iframe.src = 'https://r-login.wordpress.com/remote-login.php?wpcom_remote_login=request_access&origin=' + encodeURIComponent( data.origin ) + '&wpcomid=' + encodeURIComponent( data.wpcomid );
+
+			var css = 'html { -webkit-transition: margin-top 1s; transition: margin-top 1s; } /* 9001 */ html { margin-top: 46px !important; } * html body { margin-top: 46px !important; } @media screen and ( max-width: 660px ) { html { margin-top: 71px !important; } * html body { margin-top: 71px !important; } #wpcom_request_access_iframe { display: block; height: 71px !important; } } #wpcom_request_access_iframe { border: 0px; height: 46px; position: fixed; top: 0; left: 0; width: 100%; min-width: 100%; z-index: 99999; background: #23282d; } ';
+
+			var style = document.createElement( 'style' );
+			style.type = 'text/css';
+			style.id = 'wpcom_request_access_styles';
+			style.appendChild( document.createTextNode( css ) );
+			document.body.appendChild( style );
+
+			document.body.appendChild( iframe );
+		}
+
+		if ( data.msg === 'DONE' ) {
+			wpcom_remote_login_final_cleanup();
+		}
+	}
+}, false );
+
+// Inject the remote login iframe after the page has had a chance to load
+// more critical resources
+window.addEventListener( "DOMContentLoaded", function( e ) {
+	var iframe = document.createElement( "iframe" );
+	iframe.style.display = "none";
+	iframe.setAttribute( "scrolling", "no" );
+	iframe.setAttribute( "id", "wpcom_remote_login_key" );
+	iframe.src = "https://r-login.wordpress.com/remote-login.php"
+		+ "?wpcom_remote_login=key"
+		+ "&origin=aHR0cHM6Ly96aWVnZWxlaWdhcnRlbi5jaA%3D%3D"
+		+ "&wpcomid=38393425"
+		+ "&time=" + Math.floor( Date.now() / 1000 );
+	document.body.appendChild( iframe );
+}, false );
+</script>
+<link rel='dns-prefetch' href='//s2.wp.com' />
+<link rel='dns-prefetch' href='//s1.wp.com' />
+<link rel='dns-prefetch' href='//s0.wp.com' />
+<link rel="alternate" type="application/rss+xml" title=" &raquo; Feed" href="https://ziegeleigarten.ch/feed/" />
+<link rel="alternate" type="application/rss+xml" title=" &raquo; Kommentar-Feed" href="https://ziegeleigarten.ch/comments/feed/" />
+	<script type="text/javascript">
+		/* <![CDATA[ */
+		function addLoadEvent(func) {
+			var oldonload = window.onload;
+			if (typeof window.onload != 'function') {
+				window.onload = func;
+			} else {
+				window.onload = function () {
+					oldonload();
+					func();
+				}
+			}
+		}
+		/* ]]> */
+	</script>
+	<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<link crossorigin='anonymous' rel='stylesheet' id='all-css-2-1' href='/wp-content/mu-plugins/jetpack-plugin/moon/modules/theme-tools/compat/twentysixteen.css?m=1753284714i&cssminify=yes' type='text/css' media='all' />
+<style id="wp-emoji-styles-inline-css">
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id="wp-block-library-inline-css">
+:root{--wp-block-synced-color:#7a00df;--wp-block-synced-color--rgb:122,0,223;--wp-bound-block-color:var(--wp-block-synced-color);--wp-editor-canvas-background:#ddd;--wp-admin-theme-color:#3858e9;--wp-admin-theme-color--rgb:56,88,233;--wp-admin-theme-color-darker-10:#2145e6;--wp-admin-theme-color-darker-10--rgb:33.0384615385,68.7307692308,230.4615384615;--wp-admin-theme-color-darker-20:#183ad6;--wp-admin-theme-color-darker-20--rgb:23.6923076923,58.1538461538,214.3076923077;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){:root{--wp-admin-border-width-focus:1.5px}}body.admin-color-fresh{--wp-admin-theme-color:#007cba;--wp-admin-theme-color--rgb:0,124,186;--wp-admin-theme-color-darker-10:#006ba1;--wp-admin-theme-color-darker-10--rgb:0,107,160.5;--wp-admin-theme-color-darker-20:#005a87;--wp-admin-theme-color-darker-20--rgb:0,90,135;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){body.admin-color-fresh{--wp-admin-border-width-focus:1.5px}}.wp-element-button{cursor:pointer}:root .has-very-light-gray-background-color{background-color:#eee}:root .has-very-dark-gray-background-color{background-color:#313131}:root .has-very-light-gray-color{color:#eee}:root .has-very-dark-gray-color{color:#313131}:root .has-vivid-green-cyan-to-vivid-cyan-blue-gradient-background{background:linear-gradient(135deg,#00d084,#0693e3)}:root .has-purple-crush-gradient-background{background:linear-gradient(135deg,#34e2e4,#4721fb 50%,#ab1dfe)}:root .has-hazy-dawn-gradient-background{background:linear-gradient(135deg,#faaca8,#dad0ec)}:root .has-subdued-olive-gradient-background{background:linear-gradient(135deg,#fafae1,#67a671)}:root .has-atomic-cream-gradient-background{background:linear-gradient(135deg,#fdd79a,#004a59)}:root .has-nightshade-gradient-background{background:linear-gradient(135deg,#330968,#31cdcf)}:root .has-midnight-gradient-background{background:linear-gradient(135deg,#020381,#2874fc)}:root{--wp--preset--font-size--normal:16px;--wp--preset--font-size--huge:42px}.has-regular-font-size{font-size:1em}.has-larger-font-size{font-size:2.625em}.has-normal-font-size{font-size:var(--wp--preset--font-size--normal)}.has-huge-font-size{font-size:var(--wp--preset--font-size--huge)}:root .has-text-align-center{text-align:center}:root .has-text-align-left{text-align:left}:root .has-text-align-right{text-align:right}.has-fit-text{white-space:nowrap!important}#end-resizable-editor-section{display:none}.aligncenter{clear:both}.items-justified-left{justify-content:flex-start}.items-justified-center{justify-content:center}.items-justified-right{justify-content:flex-end}.items-justified-space-between{justify-content:space-between}.screen-reader-text{border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;overflow-wrap:normal!important;padding:0;position:absolute;width:1px;word-break:normal!important}.screen-reader-text:focus{background-color:#ddd;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}html :where(.has-border-color){border-style:solid}html :where([style^=border-color],[style*=";border-color"],[style*="; border-color"]){border-style:solid}html :where([style^=border-top-color],[style*=";border-top-color"],[style*="; border-top-color"]){border-top-style:solid}html :where([style^=border-right-color],[style*=";border-right-color"],[style*="; border-right-color"]){border-right-style:solid}html :where([style^=border-bottom-color],[style*=";border-bottom-color"],[style*="; border-bottom-color"]){border-bottom-style:solid}html :where([style^=border-left-color],[style*=";border-left-color"],[style*="; border-left-color"]){border-left-style:solid}html :where([style^=border-width],[style*=";border-width"],[style*="; border-width"]){border-style:solid}html :where([style^=border-top-width],[style*=";border-top-width"],[style*="; border-top-width"]){border-top-style:solid}html :where([style^=border-right-width],[style*=";border-right-width"],[style*="; border-right-width"]){border-right-style:solid}html :where([style^=border-bottom-width],[style*=";border-bottom-width"],[style*="; border-bottom-width"]){border-bottom-style:solid}html :where([style^=border-left-width],[style*=";border-left-width"],[style*="; border-left-width"]){border-left-style:solid}html :where(img[class*=wp-image-]){height:auto;max-width:100%}:where(figure){margin:0 0 1em}html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:var(--wp-admin--admin-bar--height,0px)}@media screen and (max-width:600px){html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:0px}}@supports (not (-webkit-backdrop-filter:blur(1px))) and (not (-moz-appearance:none)){mtd[columnalign=right]{text-align:-webkit-right}mtd[columnalign=left]{text-align:-webkit-left}menclose[notation~=top]{border-top:.065em solid;padding-top:.1em}menclose[notation~=bottom]{border-bottom:.065em solid;padding-bottom:.1em}}
+
+/*# sourceURL=/wp-content/plugins/gutenberg-core/v24.2.0/build/styles/block-library/common.min.css */
+</style>
+<style id="wp-block-library-inline-css-extra">
+.has-text-align-justify {
+	text-align:justify;
+}
+.has-text-align-justify{text-align:justify;}
+/*# sourceURL=wp-block-library-inline-css */
+</style>
+
+<style id="classic-theme-styles-inline-css">
+.wp-block-button__link{background-color:#32373c;border-radius:9999px;box-shadow:none;color:#fff;font-size:1.125em;padding:calc(.667em + 2px) calc(1.333em + 2px);text-decoration:none}.wp-block-file__button{background:#32373c;color:#fff}.wp-block-accordion-heading{margin:0}.wp-block-accordion-heading__toggle{background-color:inherit!important;color:inherit!important}.wp-block-accordion-heading__toggle:not(:focus-visible){outline:none}.wp-block-accordion-heading__toggle:focus,.wp-block-accordion-heading__toggle:hover{background-color:inherit!important;border:none;box-shadow:none;color:inherit;padding:var(--wp--preset--spacing--20,1em) 0;text-decoration:none}.wp-block-accordion-heading__toggle:focus-visible{outline:auto;outline-offset:0}.wp-block-tab:not(.has-text-color){color:inherit!important}.wp-block-tab:not(.has-background){background-color:inherit!important}.wp-block-tab:focus,.wp-block-tab:hover{text-decoration:none}.wp-block-tab:focus-visible{outline:auto;outline-offset:0}
+/*# sourceURL=/wp-content/plugins/gutenberg-core/v24.2.0/build/styles/block-library/classic.min.css */
+</style>
+
+<style id="coblocks-inline-format-inline-css">
+.uppercase{text-transform:uppercase}
+/*# sourceURL=coblocks-inline-format-inline-css */
+</style>
+<link crossorigin='anonymous' rel='stylesheet' id='all-css-12-1' href='/_static/??/wp-content/mu-plugins/core-compat/wp-mediaelement.css,/wp-content/mu-plugins/wpcom-bbpress-premium-themes.css?m=1432920480j&cssminify=yes' type='text/css' media='all' />
+<style id="global-styles-inline-css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #fff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--dark-gray: #1a1a1a;--wp--preset--color--medium-gray: #686868;--wp--preset--color--light-gray: #e5e5e5;--wp--preset--color--blue-gray: #4d545c;--wp--preset--color--bright-blue: #007acc;--wp--preset--color--light-blue: #9adffd;--wp--preset--color--dark-brown: #402b30;--wp--preset--color--medium-brown: #774e24;--wp--preset--color--dark-red: #640c1f;--wp--preset--color--bright-red: #ff675f;--wp--preset--color--yellow: #ffef8e;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--font-family--albert-sans: 'Albert Sans', sans-serif;--wp--preset--font-family--alegreya: Alegreya, serif;--wp--preset--font-family--arvo: Arvo, serif;--wp--preset--font-family--bodoni-moda: 'Bodoni Moda', serif;--wp--preset--font-family--bricolage-grotesque: 'Bricolage Grotesque', sans-serif;--wp--preset--font-family--cabin: Cabin, sans-serif;--wp--preset--font-family--chivo: Chivo, sans-serif;--wp--preset--font-family--commissioner: Commissioner, sans-serif;--wp--preset--font-family--cormorant: Cormorant, serif;--wp--preset--font-family--courier-prime: 'Courier Prime', monospace;--wp--preset--font-family--crimson-pro: 'Crimson Pro', serif;--wp--preset--font-family--dm-mono: 'DM Mono', monospace;--wp--preset--font-family--dm-sans: 'DM Sans', sans-serif;--wp--preset--font-family--dm-serif-display: 'DM Serif Display', serif;--wp--preset--font-family--domine: Domine, serif;--wp--preset--font-family--eb-garamond: 'EB Garamond', serif;--wp--preset--font-family--epilogue: Epilogue, sans-serif;--wp--preset--font-family--fahkwang: Fahkwang, sans-serif;--wp--preset--font-family--figtree: Figtree, sans-serif;--wp--preset--font-family--fira-sans: 'Fira Sans', sans-serif;--wp--preset--font-family--fjalla-one: 'Fjalla One', sans-serif;--wp--preset--font-family--fraunces: Fraunces, serif;--wp--preset--font-family--gabarito: Gabarito, system-ui;--wp--preset--font-family--ibm-plex-mono: 'IBM Plex Mono', monospace;--wp--preset--font-family--ibm-plex-sans: 'IBM Plex Sans', sans-serif;--wp--preset--font-family--ibarra-real-nova: 'Ibarra Real Nova', serif;--wp--preset--font-family--instrument-serif: 'Instrument Serif', serif;--wp--preset--font-family--inter: Inter, sans-serif;--wp--preset--font-family--josefin-sans: 'Josefin Sans', sans-serif;--wp--preset--font-family--jost: Jost, sans-serif;--wp--preset--font-family--libre-baskerville: 'Libre Baskerville', serif;--wp--preset--font-family--libre-franklin: 'Libre Franklin', sans-serif;--wp--preset--font-family--literata: Literata, serif;--wp--preset--font-family--lora: Lora, serif;--wp--preset--font-family--merriweather: Merriweather, serif;--wp--preset--font-family--montserrat: Montserrat, sans-serif;--wp--preset--font-family--newsreader: Newsreader, serif;--wp--preset--font-family--noto-sans-mono: 'Noto Sans Mono', sans-serif;--wp--preset--font-family--nunito: Nunito, sans-serif;--wp--preset--font-family--open-sans: 'Open Sans', sans-serif;--wp--preset--font-family--overpass: Overpass, sans-serif;--wp--preset--font-family--pt-serif: 'PT Serif', serif;--wp--preset--font-family--petrona: Petrona, serif;--wp--preset--font-family--piazzolla: Piazzolla, serif;--wp--preset--font-family--playfair-display: 'Playfair Display', serif;--wp--preset--font-family--plus-jakarta-sans: 'Plus Jakarta Sans', sans-serif;--wp--preset--font-family--poppins: Poppins, sans-serif;--wp--preset--font-family--raleway: Raleway, sans-serif;--wp--preset--font-family--roboto: Roboto, sans-serif;--wp--preset--font-family--roboto-slab: 'Roboto Slab', serif;--wp--preset--font-family--rubik: Rubik, sans-serif;--wp--preset--font-family--rufina: Rufina, serif;--wp--preset--font-family--sora: Sora, sans-serif;--wp--preset--font-family--source-sans-3: 'Source Sans 3', sans-serif;--wp--preset--font-family--source-serif-4: 'Source Serif 4', serif;--wp--preset--font-family--space-mono: 'Space Mono', monospace;--wp--preset--font-family--syne: Syne, sans-serif;--wp--preset--font-family--texturina: Texturina, serif;--wp--preset--font-family--urbanist: Urbanist, sans-serif;--wp--preset--font-family--work-sans: 'Work Sans', sans-serif;--wp--preset--text-shadow--light: 0.05em 0.05em 0.1em rgba(0, 0, 0, 0.3);--wp--preset--text-shadow--strong: 0.1em 0.1em 0.25em rgba(0, 0, 0, 0.5);--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}.wp-block-button{--wp--preset--dimension--25: 25%;--wp--preset--dimension--50: 50%;--wp--preset--dimension--75: 75%;--wp--preset--dimension--100: 100%;}:where(body) { margin: 0; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{padding-top: 0px;padding-right: 0px;padding-bottom: 0px;padding-left: 0px;}:root :where(.wp-element-button, .wp-block-button__link){background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;font-style: inherit;font-weight: inherit;letter-spacing: inherit;line-height: inherit;padding-top: calc(0.667em + 2px);padding-right: calc(1.333em + 2px);padding-bottom: calc(0.667em + 2px);padding-left: calc(1.333em + 2px);text-decoration: none;text-transform: inherit;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-dark-gray-color{color: var(--wp--preset--color--dark-gray) !important;}.has-medium-gray-color{color: var(--wp--preset--color--medium-gray) !important;}.has-light-gray-color{color: var(--wp--preset--color--light-gray) !important;}.has-blue-gray-color{color: var(--wp--preset--color--blue-gray) !important;}.has-bright-blue-color{color: var(--wp--preset--color--bright-blue) !important;}.has-light-blue-color{color: var(--wp--preset--color--light-blue) !important;}.has-dark-brown-color{color: var(--wp--preset--color--dark-brown) !important;}.has-medium-brown-color{color: var(--wp--preset--color--medium-brown) !important;}.has-dark-red-color{color: var(--wp--preset--color--dark-red) !important;}.has-bright-red-color{color: var(--wp--preset--color--bright-red) !important;}.has-yellow-color{color: var(--wp--preset--color--yellow) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-dark-gray-background-color{background-color: var(--wp--preset--color--dark-gray) !important;}.has-medium-gray-background-color{background-color: var(--wp--preset--color--medium-gray) !important;}.has-light-gray-background-color{background-color: var(--wp--preset--color--light-gray) !important;}.has-blue-gray-background-color{background-color: var(--wp--preset--color--blue-gray) !important;}.has-bright-blue-background-color{background-color: var(--wp--preset--color--bright-blue) !important;}.has-light-blue-background-color{background-color: var(--wp--preset--color--light-blue) !important;}.has-dark-brown-background-color{background-color: var(--wp--preset--color--dark-brown) !important;}.has-medium-brown-background-color{background-color: var(--wp--preset--color--medium-brown) !important;}.has-dark-red-background-color{background-color: var(--wp--preset--color--dark-red) !important;}.has-bright-red-background-color{background-color: var(--wp--preset--color--bright-red) !important;}.has-yellow-background-color{background-color: var(--wp--preset--color--yellow) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-dark-gray-border-color{border-color: var(--wp--preset--color--dark-gray) !important;}.has-medium-gray-border-color{border-color: var(--wp--preset--color--medium-gray) !important;}.has-light-gray-border-color{border-color: var(--wp--preset--color--light-gray) !important;}.has-blue-gray-border-color{border-color: var(--wp--preset--color--blue-gray) !important;}.has-bright-blue-border-color{border-color: var(--wp--preset--color--bright-blue) !important;}.has-light-blue-border-color{border-color: var(--wp--preset--color--light-blue) !important;}.has-dark-brown-border-color{border-color: var(--wp--preset--color--dark-brown) !important;}.has-medium-brown-border-color{border-color: var(--wp--preset--color--medium-brown) !important;}.has-dark-red-border-color{border-color: var(--wp--preset--color--dark-red) !important;}.has-bright-red-border-color{border-color: var(--wp--preset--color--bright-red) !important;}.has-yellow-border-color{border-color: var(--wp--preset--color--yellow) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}.has-albert-sans-font-family{font-family: var(--wp--preset--font-family--albert-sans) !important;}.has-alegreya-font-family{font-family: var(--wp--preset--font-family--alegreya) !important;}.has-arvo-font-family{font-family: var(--wp--preset--font-family--arvo) !important;}.has-bodoni-moda-font-family{font-family: var(--wp--preset--font-family--bodoni-moda) !important;}.has-bricolage-grotesque-font-family{font-family: var(--wp--preset--font-family--bricolage-grotesque) !important;}.has-cabin-font-family{font-family: var(--wp--preset--font-family--cabin) !important;}.has-chivo-font-family{font-family: var(--wp--preset--font-family--chivo) !important;}.has-commissioner-font-family{font-family: var(--wp--preset--font-family--commissioner) !important;}.has-cormorant-font-family{font-family: var(--wp--preset--font-family--cormorant) !important;}.has-courier-prime-font-family{font-family: var(--wp--preset--font-family--courier-prime) !important;}.has-crimson-pro-font-family{font-family: var(--wp--preset--font-family--crimson-pro) !important;}.has-dm-mono-font-family{font-family: var(--wp--preset--font-family--dm-mono) !important;}.has-dm-sans-font-family{font-family: var(--wp--preset--font-family--dm-sans) !important;}.has-dm-serif-display-font-family{font-family: var(--wp--preset--font-family--dm-serif-display) !important;}.has-domine-font-family{font-family: var(--wp--preset--font-family--domine) !important;}.has-eb-garamond-font-family{font-family: var(--wp--preset--font-family--eb-garamond) !important;}.has-epilogue-font-family{font-family: var(--wp--preset--font-family--epilogue) !important;}.has-fahkwang-font-family{font-family: var(--wp--preset--font-family--fahkwang) !important;}.has-figtree-font-family{font-family: var(--wp--preset--font-family--figtree) !important;}.has-fira-sans-font-family{font-family: var(--wp--preset--font-family--fira-sans) !important;}.has-fjalla-one-font-family{font-family: var(--wp--preset--font-family--fjalla-one) !important;}.has-fraunces-font-family{font-family: var(--wp--preset--font-family--fraunces) !important;}.has-gabarito-font-family{font-family: var(--wp--preset--font-family--gabarito) !important;}.has-ibm-plex-mono-font-family{font-family: var(--wp--preset--font-family--ibm-plex-mono) !important;}.has-ibm-plex-sans-font-family{font-family: var(--wp--preset--font-family--ibm-plex-sans) !important;}.has-ibarra-real-nova-font-family{font-family: var(--wp--preset--font-family--ibarra-real-nova) !important;}.has-instrument-serif-font-family{font-family: var(--wp--preset--font-family--instrument-serif) !important;}.has-inter-font-family{font-family: var(--wp--preset--font-family--inter) !important;}.has-josefin-sans-font-family{font-family: var(--wp--preset--font-family--josefin-sans) !important;}.has-jost-font-family{font-family: var(--wp--preset--font-family--jost) !important;}.has-libre-baskerville-font-family{font-family: var(--wp--preset--font-family--libre-baskerville) !important;}.has-libre-franklin-font-family{font-family: var(--wp--preset--font-family--libre-franklin) !important;}.has-literata-font-family{font-family: var(--wp--preset--font-family--literata) !important;}.has-lora-font-family{font-family: var(--wp--preset--font-family--lora) !important;}.has-merriweather-font-family{font-family: var(--wp--preset--font-family--merriweather) !important;}.has-montserrat-font-family{font-family: var(--wp--preset--font-family--montserrat) !important;}.has-newsreader-font-family{font-family: var(--wp--preset--font-family--newsreader) !important;}.has-noto-sans-mono-font-family{font-family: var(--wp--preset--font-family--noto-sans-mono) !important;}.has-nunito-font-family{font-family: var(--wp--preset--font-family--nunito) !important;}.has-open-sans-font-family{font-family: var(--wp--preset--font-family--open-sans) !important;}.has-overpass-font-family{font-family: var(--wp--preset--font-family--overpass) !important;}.has-pt-serif-font-family{font-family: var(--wp--preset--font-family--pt-serif) !important;}.has-petrona-font-family{font-family: var(--wp--preset--font-family--petrona) !important;}.has-piazzolla-font-family{font-family: var(--wp--preset--font-family--piazzolla) !important;}.has-playfair-display-font-family{font-family: var(--wp--preset--font-family--playfair-display) !important;}.has-plus-jakarta-sans-font-family{font-family: var(--wp--preset--font-family--plus-jakarta-sans) !important;}.has-poppins-font-family{font-family: var(--wp--preset--font-family--poppins) !important;}.has-raleway-font-family{font-family: var(--wp--preset--font-family--raleway) !important;}.has-roboto-font-family{font-family: var(--wp--preset--font-family--roboto) !important;}.has-roboto-slab-font-family{font-family: var(--wp--preset--font-family--roboto-slab) !important;}.has-rubik-font-family{font-family: var(--wp--preset--font-family--rubik) !important;}.has-rufina-font-family{font-family: var(--wp--preset--font-family--rufina) !important;}.has-sora-font-family{font-family: var(--wp--preset--font-family--sora) !important;}.has-source-sans-3-font-family{font-family: var(--wp--preset--font-family--source-sans-3) !important;}.has-source-serif-4-font-family{font-family: var(--wp--preset--font-family--source-serif-4) !important;}.has-space-mono-font-family{font-family: var(--wp--preset--font-family--space-mono) !important;}.has-syne-font-family{font-family: var(--wp--preset--font-family--syne) !important;}.has-texturina-font-family{font-family: var(--wp--preset--font-family--texturina) !important;}.has-urbanist-font-family{font-family: var(--wp--preset--font-family--urbanist) !important;}.has-work-sans-font-family{font-family: var(--wp--preset--font-family--work-sans) !important;}.has-light-text-shadow{text-shadow: var(--wp--preset--text-shadow--light) !important;}.has-strong-text-shadow{text-shadow: var(--wp--preset--text-shadow--strong) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link crossorigin='anonymous' rel='stylesheet' id='all-css-14-1' href='/_static/??-eJyNjtEOgjAMRX9ILMQEfDF+ihlLxcHWLWsX4O8t6oOJmvjWe3N6WphTZSMJkoDcMCBDKj3IrMXKbhFEgqsCDAFzdjMaxXKVfOEqbL22Rp7Zkao4eiNmb5l38CYPZWMGRwwjSjJ2emUIMRJcdBcGJMxuc3wfP6Q/P2ZZPf6PKwi9j3Z6nDiHU9N1TVu3h2M93gE9W27V&cssminify=yes' type='text/css' media='all' />
+<style id="twentysixteen-style-inline-css">
+.cat-links, .tags-links, .byline { clip: rect(1px, 1px, 1px, 1px); height: 1px; position: absolute; overflow: hidden; width: 1px; }
+/*# sourceURL=twentysixteen-style-inline-css */
+</style>
+<link crossorigin='anonymous' rel='stylesheet' id='all-css-20-1' href='/_static/??-eJx9y0EOwjAMRNELYUxEK7FBnKWNTAhK7Kh2lPb2pGyADbv5Iz1sBbywERvagzIpljqjtX5sGlcjYvSqqLYlgla85GPvA37BXKGkGiIrLjQnCX2Gt/rkPxRIIImfLAr/BNzTFJed3vLVjW4YT2fnLs8X8DhDqQ==&cssminify=yes' type='text/css' media='all' />
+<style id="jetpack-global-styles-frontend-style-inline-css">
+:root { --font-headings: unset; --font-base: unset; --font-headings-default: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif; --font-base-default: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;}
+/*# sourceURL=jetpack-global-styles-frontend-style-inline-css */
+</style>
+<link crossorigin='anonymous' rel='stylesheet' id='all-css-22-1' href='/_static/??-eJyNjcEKAjEMRH/ImhVlqwfxU6TbhrZrmhTTIv69u+JFvHgZ5sHwBh7VeOGG3KB0U6nHzAoztur87cNQRNYInVBBk7tjcCE83zVz3HrVDfxvumb2MPVMAVR8dmRIougX/DhbwrK8pwNEksnROriU884e9+PJDnaYXxwFS20=&cssminify=yes' type='text/css' media='all' />
+<script id="wpcom-actionbar-placeholder-js-extra">
+var actionbardata = {"siteID":"38393425","postID":"433","siteURL":"https://ziegeleigarten.ch","xhrURL":"https://ziegeleigarten.ch/wp-admin/admin-ajax.php","nonce":"df4eaf1b76","isLoggedIn":"","statusMessage":"","statusSubscribed":"","subsEmailDefault":"instantly","proxyScriptUrl":"https://s0.wp.com/wp-content/js/wpcom-proxy-request.js?m=1513050504i&amp;ver=20211021","shortlink":"https://wp.me/P2B5SN-6Z","i18n":{"followedText":"Neue Beitr\u00e4ge von dieser Website erscheinen nun in deinem \u003Ca href=\"https://wordpress.com/reader\"\u003EReader\u003C/a\u003E","foldBar":"Diese Leiste einklappen","unfoldBar":"Diese Leiste aufklappen","shortLinkCopied":"In Zwischenablage kopiert."}};
+//# sourceURL=wpcom-actionbar-placeholder-js-extra
+</script>
+<script id="jetpack-mu-wpcom-settings-js-before">
+var JETPACK_MU_WPCOM_SETTINGS = {"assetsUrl":"https://s1.wp.com/wp-content/mu-plugins/jetpack-mu-wpcom-plugin/moon/jetpack_vendor/automattic/jetpack-mu-wpcom/src/build/"};
+//# sourceURL=jetpack-mu-wpcom-settings-js-before
+</script>
+<script crossorigin='anonymous' type='text/javascript'  src='/_static/??/wp-content/js/rlt-proxy.js,/wp-content/themes/pub/twentysixteen/js/html5.js?m=1720530689j'></script>
+<script id="rlt-proxy-js-after">
+	rltInitialize( {"token":null,"iframeOrigins":["https:\/\/widgets.wp.com"]} );
+//# sourceURL=rlt-proxy-js-after
+</script>
+<link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://ziegeleigarten.wordpress.com/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress.com" />
+<link rel="canonical" href="https://ziegeleigarten.ch/" />
+<link rel='shortlink' href='https://wp.me/P2B5SN-6Z' />
+<link rel="alternate" type="application/json+oembed" href="https://public-api.wordpress.com/oembed/?format=json&amp;url=https%3A%2F%2Fziegeleigarten.ch%2F&amp;for=wpcom-auto-discovery" /><link rel="alternate" type="application/xml+oembed" href="https://public-api.wordpress.com/oembed/?format=xml&amp;url=https%3A%2F%2Fziegeleigarten.ch%2F&amp;for=wpcom-auto-discovery" />
+<!-- Jetpack Open Graph Tags -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="(kein Titel)" />
+<meta property="og:url" content="https://ziegeleigarten.ch/" />
+<meta property="og:image" content="https://ziegeleigarten.ch/wp-content/uploads/2017/11/rafz.jpg" />
+<meta property="og:image:width" content="1000" />
+<meta property="og:image:alt" content="rafz" />
+<meta property="og:locale" content="de_DE" />
+<meta property="article:publisher" content="https://www.facebook.com/WordPresscom" />
+<meta name="twitter:text:title" content="Einfamilienhäuser" />
+<meta name="twitter:image" content="https://ziegeleigarten.ch/wp-content/uploads/2017/11/rafz.jpg?w=144" />
+<meta name="twitter:image:alt" content="rafz" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:description" content="Besuche den Beitrag für mehr Info." />
+
+<!-- End Jetpack Open Graph Tags -->
+<link rel='openid.server' href='https://ziegeleigarten.ch/?openidserver=1' />
+<link rel='openid.delegate' href='https://ziegeleigarten.ch/' />
+<link rel="search" type="application/opensearchdescription+xml" href="https://ziegeleigarten.ch/osd.xml" title="" />
+<link rel="search" type="application/opensearchdescription+xml" href="https://s1.wp.com/opensearch.xml" title="WordPress.com" />
+<meta name="theme-color" content="#517398" />
+		<style type="text/css">
+			.recentcomments a {
+				display: inline !important;
+				padding: 0 !important;
+				margin: 0 !important;
+			}
+
+			table.recentcommentsavatartop img.avatar, table.recentcommentsavatarend img.avatar {
+				border: 0px;
+				margin: 0;
+			}
+
+			table.recentcommentsavatartop a, table.recentcommentsavatarend a {
+				border: 0px !important;
+				background-color: transparent !important;
+			}
+
+			td.recentcommentsavatarend, td.recentcommentsavatartop {
+				padding: 0px 0px 1px 0px;
+				margin: 0px;
+			}
+
+			td.recentcommentstextend {
+				border: none !important;
+				padding: 0px 0px 2px 10px;
+			}
+
+			.rtl td.recentcommentstextend {
+				padding: 0px 10px 2px 0px;
+			}
+
+			td.recentcommentstexttop {
+				border: none;
+				padding: 0px 0px 0px 10px;
+			}
+
+			.rtl td.recentcommentstexttop {
+				padding: 0px 10px 0px 0px;
+			}
+		</style>
+		<meta name="description" content="Mieten Sie sich ein eigenes Einfamlienhaus im Ziegeleigarten in Rafz, einer der beliebtesten Gemeinden des Zürcher Unterlands: gut erschlossen, idyllisch, familienfreundlich. Im oberen Teil des Ziegeleigartens befinden sich acht Miet-Einfamilienhäuser. Sie stehen leicht erhöht über den Mehrfamilienhäusern und sind unterirdisch über eine gemeinsame Tiefgarage erschlossen. Sie werden per Herbst 2018 fertiggestellt und bieten mit 147&hellip;" />
+		<style type="text/css" id="twentysixteen-header-css">
+		.site-branding {
+			margin: 0 auto 0 0;
+		}
+
+		.site-branding .site-title,
+		.site-description {
+			clip: rect(1px, 1px, 1px, 1px);
+			position: absolute;
+		}
+		</style>
+		<style id="custom-background-css">
+body.custom-background { background-color: #517398; }
+</style>
+<style type="text/css" id="custom-colors-css">	input[type="text"],
+	input[type="email"],
+	input[type="url"],
+	input[type="password"],
+	input[type="search"],
+	input[type="tel"],
+	input[type="number"],
+	textarea {
+		background: #f7f7f7;
+		color: #686868;
+	}
+
+	input[type="text"]:focus,
+	input[type="email"]:focus,
+	input[type="url"]:focus,
+	input[type="password"]:focus,
+	input[type="search"]:focus,
+	input[type="tel"]:focus,
+	input[type="number"]:focus,
+	textarea:focus {
+		background-color: #fff;
+		color: #1a1a1a;
+	}
+body { background-color: #517398;}
+.site,
+		.main-navigation ul ul li { background-color: #eee9e1;}
+body #infinite-footer .container { background-color: #eee9e1;}
+body #infinite-footer .container { background-color: rgba( 238, 233, 225, 0.9 );}
+.main-navigation ul ul:after { border-top-color: #eee9e1;}
+.main-navigation ul ul:after { border-bottom-color: #eee9e1;}
+mark,
+		ins,
+		button,
+		button[disabled]:hover,
+		button[disabled]:focus,
+		input[type="button"],
+		input[type="button"][disabled]:hover,
+		input[type="button"][disabled]:focus,
+		input[type="reset"],
+		input[type="reset"][disabled]:hover,
+		input[type="reset"][disabled]:focus,
+		input[type="submit"],
+		input[type="submit"][disabled]:hover,
+		input[type="submit"][disabled]:focus,
+		.menu-toggle.toggled-on,
+		.menu-toggle.toggled-on:hover,
+		.menu-toggle.toggled-on:focus,
+		.pagination .prev,
+		.pagination .next,
+		.pagination .prev:hover,
+		.pagination .prev:focus,
+		.pagination .next:hover,
+		.pagination .next:focus,
+		.pagination .nav-links:before,
+		.pagination .nav-links:after,
+		.widget_calendar tbody a,
+		.widget_calendar tbody a:hover,
+		.widget_calendar tbody a:focus,
+		.page-links a,
+		.page-links a:hover,
+		.page-links a:focus,
+		.site-main #infinite-handle span,
+		.wp-block-button .wp-block-button__link:active,
+		.wp-block-button .wp-block-button__link:focus,
+		.wp-block-button .wp-block-button__link:hover,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):active,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):focus,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):hover { color: #eee9e1;}
+.menu-toggle:hover,
+		.menu-toggle:focus,
+		a,
+		.main-navigation a:hover,
+		.main-navigation a:focus,
+		.dropdown-toggle:hover,
+		.dropdown-toggle:focus,
+		.social-navigation a:hover:before,
+		.social-navigation a:focus:before,
+		.post-navigation a:hover .post-title,
+		.post-navigation a:focus .post-title,
+		.tagcloud a:hover,
+		.tagcloud a:focus,
+		.site-branding .site-title a:hover,
+		.site-branding .site-title a:focus,
+		.entry-title a:hover,
+		.entry-title a:focus,
+		.entry-footer a:hover,
+		.entry-footer a:focus,
+		.comment-metadata a:hover,
+		.comment-metadata a:focus,
+		.pingback .comment-edit-link:hover,
+		.pingback .comment-edit-link:focus,
+		.comment-reply-link,
+		.comment-reply-link:hover,
+		.comment-reply-link:focus,
+		.required,
+		.site-info a:hover,
+		.site-info a:focus,
+		.main-navigation li:hover > a,
+		.main-navigation li.focus > a,
+		.comments-area #respond .comment-form-service a,
+		.widget_flickr #flickr_badge_uber_wrapper a,
+		.widget_flickr #flickr_badge_uber_wrapper a:link,
+		.widget_flickr #flickr_badge_uber_wrapper a:active,
+		.widget_flickr #flickr_badge_uber_wrapper a:visited,
+		.wp_widget_tag_cloud a:hover,
+		.wp_widget_tag_cloud a:focus,
+		body #infinite-footer .blog-info a:hover,
+		body #infinite-footer .blog-info a:focus,
+		body #infinite-footer .blog-info a:hover,
+		body #infinite-footer .blog-info a:focus,
+		body #infinite-footer .blog-credits a:hover,
+		body #infinite-footer .blog-credits a:focus,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color) { color: #CF1A1A;}
+mark,
+		ins,
+		button:hover,
+		button:focus,
+		input[type="button"]:hover,
+		input[type="button"]:focus,
+		input[type="reset"]:hover,
+		input[type="reset"]:focus,
+		input[type="submit"]:hover,
+		input[type="submit"]:focus,
+		.pagination .prev:hover,
+		.pagination .prev:focus,
+		.pagination .next:hover,
+		.pagination .next:focus,
+		.widget_calendar tbody a,
+		.page-links a:hover,
+		.page-links a:focus,
+		#infinite-handle span:hover,
+		#infinite-handle span:focus,
+		.wp-block-button .wp-block-button__link { background-color: #CF1A1A;}
+input[type="text"]:focus,
+		input[type="email"]:focus,
+		input[type="url"]:focus,
+		input[type="password"]:focus,
+		input[type="search"]:focus,
+		textarea:focus,
+		.tagcloud a:hover,
+		.tagcloud a:focus,
+		.menu-toggle:hover,
+		.menu-toggle:focus,
+		.comments-area #respond #comment-form-comment.active,
+		.comments-area #comment-form-share-text-padder.active,
+		.comments-area #respond .comment-form-fields div.comment-form-input.active,
+		.wp_widget_tag_cloud a:hover,
+		.wp_widget_tag_cloud a:focus,
+		.wp-block-button .wp-block-button__link { border-color: #CF1A1A;}
+body,
+		blockquote cite,
+		blockquote small,
+		.main-navigation a,
+		.menu-toggle,
+		.dropdown-toggle,
+		.social-navigation a,
+		.post-navigation a,
+		.widget-title a,
+		.site-branding .site-title a,
+		.entry-title a,
+		.page-links > .page-links-title,
+		.comment-author,
+		.comment-reply-title small a:hover,
+		.comment-reply-title small a:focus { color: #595959;}
+blockquote,
+		.menu-toggle.toggled-on,
+		.menu-toggle.toggled-on:hover,
+		.menu-toggle.toggled-on:focus,
+		.post-navigation,
+		.post-navigation div + div,
+		.pagination,
+		.widget,
+		.page-header,
+		.page-links a,
+		.comments-title,
+		.comment-reply-title,
+		.wp-block-button .wp-block-button__link:active,
+		.wp-block-button .wp-block-button__link:focus,
+		.wp-block-button .wp-block-button__link:hover,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):active,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):focus,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):hover { border-color: #595959;}
+button,
+		button[disabled]:hover,
+		button[disabled]:focus,
+		input[type="button"],
+		input[type="button"][disabled]:hover,
+		input[type="button"][disabled]:focus,
+		input[type="reset"],
+		input[type="reset"][disabled]:hover,
+		input[type="reset"][disabled]:focus,
+		input[type="submit"],
+		input[type="submit"][disabled]:hover,
+		input[type="submit"][disabled]:focus,
+		.menu-toggle.toggled-on,
+		.menu-toggle.toggled-on:hover,
+		.menu-toggle.toggled-on:focus,
+		.pagination:before,
+		.pagination:after,
+		.pagination .prev,
+		.pagination .next,
+		.page-links a,
+		.site-main #infinite-handle span,
+		.wp-block-button .wp-block-button__link:active,
+		.wp-block-button .wp-block-button__link:focus,
+		.wp-block-button .wp-block-button__link:hover,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):active,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):focus,
+		.is-style-outline>.wp-block-button__link:not(.has-text-color):hover { background-color: #595959;}
+fieldset,
+		pre,
+		abbr,
+		acronym,
+		table,
+		th,
+		td,
+		input[type="text"],
+		input[type="email"],
+		input[type="url"],
+		input[type="password"],
+		input[type="search"],
+		textarea,
+		.main-navigation li,
+		.main-navigation .primary-menu,
+		.menu-toggle,
+		.dropdown-toggle:after,
+		.social-navigation a,
+		.image-navigation,
+		.comment-navigation,
+		.tagcloud a,
+		.entry-content,
+		.entry-summary,
+		.page-links a,
+		.page-links > span,
+		.comment-list article,
+		.comment-list .pingback,
+		.comment-list .trackback,
+		.comment-reply-link,
+		.no-comments,
+		.main-navigation ul ul,
+		.main-navigation ul ul li,
+		.comments-area #respond #comment-form-comment,
+		.comments-area #comment-form-share-text-padder,
+		.comments-area #respond .comment-form-fields div.comment-form-input,
+		.comments-area #respond .comment-form-service,
+		.wp_widget_tag_cloud a,
+		body #infinite-footer .container { border-color: #595959;}
+fieldset,
+		pre,
+		abbr,
+		acronym,
+		table,
+		th,
+		td,
+		input[type="text"],
+		input[type="email"],
+		input[type="url"],
+		input[type="password"],
+		input[type="search"],
+		textarea,
+		.main-navigation li,
+		.main-navigation .primary-menu,
+		.menu-toggle,
+		.dropdown-toggle:after,
+		.social-navigation a,
+		.image-navigation,
+		.comment-navigation,
+		.tagcloud a,
+		.entry-content,
+		.entry-summary,
+		.page-links a,
+		.page-links > span,
+		.comment-list article,
+		.comment-list .pingback,
+		.comment-list .trackback,
+		.comment-reply-link,
+		.no-comments,
+		.main-navigation ul ul,
+		.main-navigation ul ul li,
+		.comments-area #respond #comment-form-comment,
+		.comments-area #comment-form-share-text-padder,
+		.comments-area #respond .comment-form-fields div.comment-form-input,
+		.comments-area #respond .comment-form-service,
+		.wp_widget_tag_cloud a,
+		body #infinite-footer .container { border-color: rgba( 89, 89, 89, 0.2 );}
+.main-navigation ul ul:before { border-top-color: #595959;}
+.main-navigation ul ul:before { border-top-color: rgba( 89, 89, 89, 0.2 );}
+.main-navigation ul ul:before { border-bottom-color: #595959;}
+.main-navigation ul ul:before { border-bottom-color: rgba( 89, 89, 89, 0.2 );}
+hr,
+		code { background-color: #595959;}
+hr,
+		code { background-color: rgba( 89, 89, 89, 0.2 );}
+blockquote,
+		.post-password-form label,
+		a:hover,
+		a:focus,
+		a:active,
+		.post-navigation .meta-nav,
+		.image-navigation,
+		.comment-navigation,
+		.widget_recent_entries .post-date,
+		.widget_rss .rss-date,
+		.widget_rss cite,
+		.site-description,
+		body:not(.search-results) .entry-summary,
+		.author-bio,
+		.entry-footer,
+		.entry-footer a,
+		.sticky-post,
+		.taxonomy-description,
+		.entry-caption,
+		.comment-metadata,
+		.pingback .edit-link,
+		.comment-metadata a,
+		.pingback .comment-edit-link,
+		.comment-form label,
+		.comment-notes,
+		.comment-awaiting-moderation,
+		.logged-in-as,
+		.form-allowed-tags,
+		.site-info,
+		.site-info a,
+		.wp-caption .wp-caption-text,
+		.gallery-caption,
+		.jp-relatedposts-post-aoverlay:hover .jp-relatedposts-post-title a,
+		.jp-relatedposts-post-aoverlay:focus .jp-relatedposts-post-title a,
+		.comments-area #respond .comment-form-fields label,
+		.comments-area #respond .comment-form-fields label span.required,
+		.comments-area #respond .comment-form-fields label span.nopublish,
+		.comments-area #respond .comment-form-service a:hover,
+		.comments-area #respond .comment-form-service a:focus,
+		.comments-area #respond .comment-form-fields p.comment-form-posting-as,
+		.comments-area #respond .comment-form-fields p.comment-form-log-out,
+		.comments-area #respond #comment-form-identity #comment-form-nascar p,
+		.comments-area #respond #comment-form-subscribe p,
+		.comment-content p.comment-likes span.comment-like-feedback,
+		.widget_flickr #flickr_badge_uber_wrapper a:focus,
+		.widget_flickr #flickr_badge_uber_wrapper a:hover,
+		.top_rated div > p,
+		body #infinite-footer .blog-info a,
+		body #infinite-footer .blog-credits,
+		body #infinite-footer .blog-credits a { color: #686868;}
+#respond.js .comment-form-fields label,
+		#respond.js .comment-form-fields label span.required,
+		#respond.js .comment-form-fields label span.nopublish { color: #757575;}
+.widget_calendar tbody a:hover,
+		.widget_calendar tbody a:focus { background-color: #686868;}
+</style>
+<link rel="icon" href="https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=32" sizes="32x32" />
+<link rel="icon" href="https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=192" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=180" />
+<meta name="msapplication-TileImage" content="https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=270" />
+<link crossorigin='anonymous' rel='stylesheet' id='all-css-6-3' href='/_static/??-eJyNjMEKgzAQBX+o9ikVYg/ipxS7LhJNdoOb4O+Xgnr2OMMw2FNFKpklI5YqhTJ7MSyc00jrwYiqgo8XwjcorQbbfeLtSWYP3D9EnUpgA42bFuNwRaf4D4fYN+5dd61z7rX8ACk+O3g=&cssminify=yes' type='text/css' media='all' />
+
+</head>
+
+<body class="home wp-singular page-template-default page page-id-433 custom-background wp-custom-logo wp-embed-responsive wp-theme-pubtwentysixteen customizer-styles-applied no-sidebar jetpack-reblog-enabled has-site-logo categories-hidden tags-hidden author-hidden custom-colors">
+<div id="page" class="site">
+	<div class="site-inner">
+		<a class="skip-link screen-reader-text" href="#content">
+			Zum Inhalt springen		</a>
+
+		<header id="masthead" class="site-header">
+			<div class="site-header-main">
+				<div class="site-branding">
+					<a href="https://ziegeleigarten.ch/" class="site-logo-link" rel="home" itemprop="url"><img width="303" height="151" src="https://ziegeleigarten.ch/wp-content/uploads/2012/07/ziegeleigarten-web.png?w=303" class="site-logo attachment-twentysixteen-logo" alt="" data-size="twentysixteen-logo" itemprop="logo" decoding="async" srcset="https://ziegeleigarten.ch/wp-content/uploads/2012/07/ziegeleigarten-web.png 303w, https://ziegeleigarten.ch/wp-content/uploads/2012/07/ziegeleigarten-web.png?w=150 150w, https://ziegeleigarten.ch/wp-content/uploads/2012/07/ziegeleigarten-web.png?w=300 300w" sizes="(max-width: 303px) 85vw, 303px" data-attachment-id="5" data-permalink="https://ziegeleigarten.ch/ziegeleigarten-web/" data-orig-file="https://ziegeleigarten.ch/wp-content/uploads/2012/07/ziegeleigarten-web.png" data-orig-size="303,151" data-comments-opened="1" data-image-title="ziegeleigarten web" data-image-description="" data-image-caption="" data-large-file="https://ziegeleigarten.ch/wp-content/uploads/2012/07/ziegeleigarten-web.png?w=303" /></a>
+											<p class="site-title"><a href="https://ziegeleigarten.ch/" rel="home"></a></p>
+										</div><!-- .site-branding -->
+
+									<button id="menu-toggle" class="menu-toggle">Menü</button>
+
+					<div id="site-header-menu" class="site-header-menu">
+													<nav id="site-navigation" class="main-navigation" aria-label="Primäres Menü">
+								<div class="menu-main-container"><ul id="menu-main" class="primary-menu"><li id="menu-item-440" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home current-menu-item page_item page-item-433 current_page_item menu-item-440"><a href="https://ziegeleigarten.ch/" aria-current="page">Einfamilienhäuser</a></li>
+<li id="menu-item-428" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-428"><a href="https://ziegeleigarten.ch/wohnungen-2018/">Wohnungen 2018</a></li>
+<li id="menu-item-319" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-319"><a href="https://ziegeleigarten.ch/wohnungen-2015/">2015</a></li>
+<li id="menu-item-30" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-30"><a href="https://ziegeleigarten.ch/wohnungen/">2013</a></li>
+<li id="menu-item-37" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-37"><a href="https://ziegeleigarten.ch/neuigkeiten/">Neuigkeiten</a></li>
+<li id="menu-item-31" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-31"><a href="https://ziegeleigarten.ch/kontakt/">Kontakt</a></li>
+</ul></div>							</nav><!-- .main-navigation -->
+						
+											</div><!-- .site-header-menu -->
+							</div><!-- .site-header-main -->
+
+					</header><!-- .site-header -->
+
+		<div id="content" class="site-content">
+
+<div id="primary" class="content-area">
+	<main id="main" class="site-main">
+		
+<article id="post-433" class="post-433 page type-page status-publish hentry">
+	<header class="entry-header">
+		<h1 class="entry-title">Einfamilienhäuser</h1>	</header><!-- .entry-header -->
+
+	
+	<div class="entry-content">
+		<p><img data-attachment-id="526" data-permalink="https://ziegeleigarten.ch/einfamilienhaeuser/rafz/" data-orig-file="https://ziegeleigarten.ch/wp-content/uploads/2017/11/rafz.jpg" data-orig-size="758,213" data-comments-opened="1" data-image-title="rafz" data-image-description="" data-image-caption="" data-large-file="https://ziegeleigarten.ch/wp-content/uploads/2017/11/rafz.jpg?w=758" class="alignnone wp-image-526" src="https://ziegeleigarten.ch/wp-content/uploads/2017/11/rafz.jpg?w=1000" alt="rafz" width="1000" /></p>
+<p>Mieten Sie sich ein eigenes Einfamlienhaus im <a href="https://www.google.ch/maps/place/Ziegeleiw%C3%A4g,+8197+Rafz/@47.6152564,8.5478886,279m/data=!3m1!1e3!4m5!3m4!1s0x479079c457853cd9:0x507483b08153971b!8m2!3d47.6156023!4d8.5506876">Ziegeleigarten in Rafz</a>, einer der beliebtesten Gemeinden des Zürcher Unterlands: gut erschlossen, idyllisch, familienfreundlich.</p>
+<p><img data-attachment-id="399" data-permalink="https://ziegeleigarten.ch/2017/09/12/vorschau-etappe-3/etappe-3-efh-web/" data-orig-file="https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg" data-orig-size="1000,707" data-comments-opened="1" data-image-meta="{&quot;orientation&quot;:&quot;1&quot;}" data-image-title="Etappe 3 &amp;#8211; EFH &amp;#8211; Web" data-image-description="" data-image-caption="" data-large-file="https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg?w=840" class="alignnone size-full wp-image-399" src="https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg?w=840" alt="Etappe 3 - EFH - Web"   srcset="https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg 1000w, https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg?w=150&amp;h=106 150w, https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg?w=300&amp;h=212 300w, https://ziegeleigarten.ch/wp-content/uploads/2017/09/etappe-3-efh-web.jpg?w=768&amp;h=543 768w" sizes="(max-width: 709px) 85vw, (max-width: 909px) 67vw, (max-width: 1362px) 62vw, 840px" /></p>
+<p>Im oberen Teil des Ziegeleigartens befinden sich acht Miet-Einfamilienhäuser. Sie stehen leicht erhöht über den Mehrfamilienhäusern und sind unterirdisch über eine <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/1-tiefgarage.pdf">gemeinsame Tiefgarage</a> erschlossen. Sie werden per Herbst 2018 fertiggestellt und bieten mit 147 m2 Wohnfläche, 5.5 Zimmern, drei Bädern und einer modernen offenen Wohnküche ein ideales Zuhause für eine junge Familie.</p>
+<p><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/gesamtanlage-mit-hausnummern2.jpg"><img class="alignnone size-full wp-image-476" src="https://ziegeleigarten.ch/wp-content/uploads/2017/11/gesamtanlage-mit-hausnummern2.jpg?w=840" alt="Gesamtanlage mit Hausnummern"   /></a></p>
+<table border="0" summary="EFH" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td>Haus</td>
+<td>Zimmer</td>
+<td>Wohnfläche</td>
+<td>Miete (netto)</td>
+<td>Pläne</td>
+</tr>
+<tr>
+<td>15</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-15-17-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-15-17-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-15-17-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>17</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-15-17-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-15-17-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-15-17-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>19</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-19-21-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-19-21-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-19-21-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>21</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-19-21-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-19-21-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-19-21-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>23</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-23-25-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-23-25-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-23-25-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>25</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-23-25-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-23-25-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-23-25-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>27</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-27-29-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-27-29-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-27-29-3-obergeschoss.pdf">OG</a></td>
+</tr>
+<tr>
+<td>29</td>
+<td style="text-align:right;">5.5</td>
+<td style="text-align:right;">147 m2</td>
+<td style="text-align:right;">vermietet</td>
+<td><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-27-29-1-untergeschoss.pdf">UG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-27-29-2-erdgeschoss.pdf">EG</a> <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/haus-27-29-3-obergeschoss.pdf">OG</a></td>
+</tr>
+</tbody>
+</table>
+<p><a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/1-tiefgarage.pdf">Garagenplätze </a>können für 120 CHF gemietet werden. Direkt über der Tiefgarage befinden sich auch noch <a href="https://ziegeleigarten.ch/wp-content/uploads/2017/11/2-zwischengeschoss.pdf">vier Abstellräume in einem Zwischengeschoss</a>, die bei Bedarf zugemietet werden können. Zu jedem Haus gehört ein eigener Garten, für dessen Unterhalt die Mieter selbst verantwortlich sind.</p>
+<p>Interessenten melden sich bei <a href="https://ziegeleigarten.ch/kontakt/">Urs und Sybil Minder von Deltacasa</a>.</p>
+	</div><!-- .entry-content -->
+
+	
+</article><!-- #post-433 -->
+
+	</main><!-- .site-main -->
+
+	
+</div><!-- .content-area -->
+
+
+
+		</div><!-- .site-content -->
+
+		<footer id="colophon" class="site-footer">
+							<nav class="main-navigation" aria-label="Footer-Hauptmenü">
+					<div class="menu-main-container"><ul id="menu-main-1" class="primary-menu"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home current-menu-item page_item page-item-433 current_page_item menu-item-440"><a href="https://ziegeleigarten.ch/" aria-current="page">Einfamilienhäuser</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-428"><a href="https://ziegeleigarten.ch/wohnungen-2018/">Wohnungen 2018</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-319"><a href="https://ziegeleigarten.ch/wohnungen-2015/">2015</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-30"><a href="https://ziegeleigarten.ch/wohnungen/">2013</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-37"><a href="https://ziegeleigarten.ch/neuigkeiten/">Neuigkeiten</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-31"><a href="https://ziegeleigarten.ch/kontakt/">Kontakt</a></li>
+</ul></div>				</nav><!-- .main-navigation -->
+			
+			
+			<div class="site-info">
+								<span class="site-title"><a href="https://ziegeleigarten.ch/" rel="home"></a></span>
+								<a href="https://wordpress.com/?ref=footer_blog" rel="nofollow">Bloggen auf WordPress.com.</a>
+			</div><!-- .site-info -->
+		</footer><!-- .site-footer -->
+	</div><!-- .site-inner -->
+</div><!-- .site -->
+
+<!--  -->
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/files/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/pub/twentysixteen/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<script id="grofiles-cards-js" src="//0.gravatar.com/js/hovercards/hovercards.min.js?ver=202643d1133547e8a1f2801609f51cef12522abe7f6647d869e9fbc974fe356a37e613"></script>
+<script id="wpgroho-js-extra">
+var WPGroHo = {"my_hash":""};
+//# sourceURL=wpgroho-js-extra
+</script>
+<script crossorigin='anonymous' type='text/javascript'  src='/wp-content/mu-plugins/gravatar-hovercards/wpgroho.js?m=1610363240i'></script>
+
+	<script>
+		// Initialize and attach hovercards to all gravatars
+		( function() {
+			function init() {
+				if ( typeof Gravatar === 'undefined' ) {
+					return;
+				}
+
+				if ( typeof Gravatar.init !== 'function' ) {
+					return;
+				}
+
+				Gravatar.profile_cb = function ( hash, id ) {
+					WPGroHo.syncProfileData( hash, id );
+				};
+
+				Gravatar.my_hash = WPGroHo.my_hash;
+				Gravatar.init(
+					'body',
+					'#wp-admin-bar-my-account',
+					{
+						i18n: {
+							'Edit your profile →': 'Bearbeite dein Profil →',
+							'View profile →': 'Profil anzeigen →',
+							'Contact': 'Kontakt',
+							'Send money': 'Geld senden',
+							'Sorry, we are unable to load this Gravatar profile.': 'Dieses Gravatar-Profil kann nicht geladen werden.',
+							'Gravatar not found.': 'Gravatar nicht gefunden.',
+							'Too Many Requests.': 'Zu viele Anfragen.',
+							'Internal Server Error.': 'Interner Serverfehler',
+							'Is this you?': 'Bist du das?',
+							'Claim your free profile.': 'Kostenloses Profil beanspruchen',
+							'Email': 'E-Mail ',
+							'Home Phone': 'Festnetz',
+							'Work Phone': 'Geschäftlich',
+							'Cell Phone': 'Mobiltelefon',
+							'Contact Form': 'Kontaktformular',
+							'Calendar': 'Kalender',
+						},
+					}
+				);
+			}
+
+			if ( document.readyState !== 'loading' ) {
+				init();
+			} else {
+				document.addEventListener( 'DOMContentLoaded', init );
+			}
+		} )();
+	</script>
+
+		<div style="display:none">
+	</div>
+			<div id="actionbar" dir="ltr" style="display: none;"
+				class="actnbr-pub-twentysixteen" role="region" aria-label="Website-Aktionen">
+			<span class="actnbr-live" aria-live="polite"></span>
+			<ul>
+										<li class="actnbr-btn actnbr-hidden">
+										<a class="actnbr-action actnbr-actn-follow " href="" role="button" aria-haspopup="dialog" aria-expanded="false">
+				<svg class="actnbr-icon actnbr-icon-bell" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M17 11.5c0 1.353.17 2.368.976 3 .266.209.602.376 1.024.5v1H5v-1c.422-.124.757-.291 1.024-.5.806-.632.976-1.647.976-3V9c0-2.8 2.2-5 5-5s5 2.2 5 5v2.5ZM15.5 9v2.5c0 .93.066 1.98.515 2.897l.053.103H7.932a4.018 4.018 0 0 0 .053-.103c.449-.917.515-1.967.515-2.897V9c0-1.972 1.528-3.5 3.5-3.5s3.5 1.528 3.5 3.5Zm-5.492 9.008c0-.176.023-.346.065-.508h3.854A1.996 1.996 0 0 1 12 20c-1.1 0-1.992-.892-1.992-1.992Z"/></svg>				<span>Abonnieren</span>
+			</a>
+			<a class="actnbr-action actnbr-actn-following  no-display" href="" role="button">
+				<svg class="actnbr-icon actnbr-icon-check" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="fill: none" stroke="currentColor" stroke-width="1.5"><path d="M7 12L10 15L17 8" vector-effect="non-scaling-stroke"/></svg>				<span>Abonniert</span>
+			</a>
+									<div class="actnbr-popover actnbr-panel actnbr-notice" id="follow-bubble" role="dialog" aria-label="ziegeleigarten.ch abonnieren">
+								<div class="actnbr-follow-bubble">
+								<div class="actnbr-panel__group"><a class="actnbr-menu__item actnbr-sitename" href="https://ziegeleigarten.ch"><img loading='lazy' alt='' src='https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=50' srcset='https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=50 1x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=75 1.5x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=100 2x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=150 3x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=200 4x' class='avatar avatar-50' height='50' width='50' /><span class="actnbr-menu__label">ziegeleigarten.ch</span></a></div>																	<div class="actnbr-panel__group">
+										<div class="actnbr-message no-display" aria-live="polite"></div>
+										<form method="post" action="https://subscribe.wordpress.com" accept-charset="utf-8" class="no-display">
+																						<input type="email" name="email" placeholder="Möchtest du Updates? E-Mail-Adresse eingeben" class="actnbr-email-field" aria-label="E-Mail-Adresse" />
+											<input type="hidden" name="action" value="subscribe" />
+											<input type="hidden" name="blog_id" value="38393425" />
+											<input type="hidden" name="source" value="https://ziegeleigarten.ch/" />
+											<input type="hidden" name="sub-type" value="actionbar-follow" />
+											<input type="hidden" id="_wpnonce" name="_wpnonce" value="a3650846e6" />											<button type="submit" class="actnbr-button">Anmelden</button>
+										</form>
+										<p class="actnbr-login-nudge">
+											Hast du ein WordPress.com-Konto? <a href="https://wordpress.com/log-in?redirect_to=https%3A%2F%2Fr-login.wordpress.com%2Fremote-login.php%3Faction%3Dlink%26back%3Dhttps%253A%252F%252Fziegeleigarten.ch%252F">Melde dich jetzt an.</a>										</p>
+									</div>
+																	</div>
+							</div>
+						</li>
+									<li class="actnbr-ellipsis actnbr-hidden">
+					<button type="button" class="actnbr-more-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Weitere Optionen">
+						<svg class="actnbr-icon actnbr-icon-more-horizontal" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" fill="currentColor"><path d="M11 13h2v-2h-2v2zm-6 0h2v-2H5v2zm12-2v2h2v-2h-2z"/></svg>					</button>
+					<div class="actnbr-popover actnbr-menu" role="menu" aria-label="Website-Optionen">
+						<div class="actnbr-menu__group" role="group"><a role="menuitem" class="actnbr-menu__item actnbr-sitename" href="https://ziegeleigarten.ch"><img loading='lazy' alt='' src='https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=50' srcset='https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=50 1x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=75 1.5x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=100 2x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=150 3x, https://ziegeleigarten.ch/wp-content/uploads/2017/09/siteicon.jpg?w=200 4x' class='avatar avatar-50' height='50' width='50' /><span class="actnbr-menu__label">ziegeleigarten.ch</span></a></div><div class="actnbr-menu__group" role="group"><a role="menuitem" class="actnbr-menu__item actnbr-shortlink" href="https://wp.me/P2B5SN-6Z"><span class="actnbr-menu__label actnbr-shortlink__text">Kurzlink kopieren</span><span class="actnbr-menu__icon actnbr-shortlink__icon"><svg class="actnbr-icon actnbr-icon-copy" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 4.5h11a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5ZM3 5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Zm17 3v10.75c0 .69-.56 1.25-1.25 1.25H6v1.5h12.75a2.75 2.75 0 0 0 2.75-2.75V8H20Z"/></svg></span><span class="actnbr-menu__icon actnbr-shortlink__icon-copied"><svg class="actnbr-icon actnbr-icon-check" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="fill: none" stroke="currentColor" stroke-width="1.5"><path d="M7 12L10 15L17 8" vector-effect="non-scaling-stroke"/></svg></span></a><a role="menuitem" class="actnbr-menu__item actnbr-reader" href="https://wordpress.com/reader/blogs/38393425/posts/433"><span class="actnbr-menu__label">Beitrag im Reader lesen</span></a></div><div class="actnbr-menu__group" role="group"><a role="menuitem" class="actnbr-menu__item actnbr-subs" href="https://subscribe.wordpress.com/"><span class="actnbr-menu__label">Abonnements verwalten</span></a><a role="menuitem" class="actnbr-menu__item actnbr-signup" href="https://wordpress.com/start/"><span class="actnbr-menu__label">Registrieren</span></a><a role="menuitem" class="actnbr-menu__item actnbr-login" href="https://wordpress.com/log-in?redirect_to=https%3A%2F%2Fr-login.wordpress.com%2Fremote-login.php%3Faction%3Dlink%26back%3Dhttps%253A%252F%252Fziegeleigarten.ch%252F"><span class="actnbr-menu__label">Anmelden</span></a></div><div class="actnbr-menu__group" role="group"><a role="menuitem" class="actnbr-menu__item flb-report" href="https://wordpress.com/abuse/?report_url=https://ziegeleigarten.ch/" target="_blank" rel="noopener noreferrer"><span class="actnbr-menu__label">Melde diesen Inhalt</span><span class="actnbr-menu__icon"><svg class="actnbr-icon actnbr-icon-external" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" fill="currentColor"><path d="M19.5 4.5h-7V6h4.44l-5.97 5.97 1.06 1.06L18 7.06v4.44h1.5v-7Zm-13 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3H17v3a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h3V5.5h-3Z"/></svg></span></a></div><div class="actnbr-menu__group" role="group"><a role="menuitem" class="actnbr-menu__item actnbr-fold" href=""><span class="actnbr-menu__label">Diese Leiste einklappen</span></a></div>					</div>
+				</li>
+			</ul>
+		</div>
+		<script>
+window.addEventListener( "DOMContentLoaded", function () {
+				var link = document.createElement( "link" );
+				link.href = "\/wp-content\/mu-plugins\/jetpack-plugin\/moon\/jetpack_vendor\/automattic\/jetpack-newsletter\/src\/..\/build\/action-bar.css?ver=35dd33285eb46dc308dd";
+				link.rel = "stylesheet";
+				document.head.appendChild( link );
+
+				var script = document.createElement( "script" );
+				script.src = "\/wp-content\/mu-plugins\/jetpack-plugin\/moon\/jetpack_vendor\/automattic\/jetpack-newsletter\/src\/..\/build\/action-bar.js?ver=35dd33285eb46dc308dd";
+				document.body.appendChild( script );
+			} );
+</script>
+<link rel="prefetch" href="/wp-content/mu-plugins/jetpack-plugin/moon/_inc/blocks/swiper.js" as="script" />
+		<div id="jp-carousel-loading-overlay" style="display: none;">
+			<div id="jp-carousel-loading-wrapper">
+				<span id="jp-carousel-library-loading"><svg class="jetpack-spinner" width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><circle cx="50" cy="50" r="46" fill="none" stroke="#ddd" stroke-width="8"/><path d="M 50 4 A 46 46 0 0 1 96 50" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" dur="1.4s" from="0 50 50" to="360 50 50" repeatCount="indefinite"/></path></svg></span>
+			</div>
+		</div>
+		<div class="jp-carousel-overlay" style="display: none;">
+
+		<div class="jp-carousel-container">
+			<!-- The Carousel Swiper -->
+			<div
+				class="jp-carousel-wrap swiper jp-carousel-swiper-container jp-carousel-transitions"
+				itemscope
+				itemtype="https://schema.org/ImageGallery">
+				<div class="jp-carousel swiper-wrapper"></div>
+				<div class="jp-swiper-button-prev swiper-button-prev">
+					<svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<mask id="maskPrev" mask-type="alpha" maskUnits="userSpaceOnUse" x="8" y="6" width="9" height="12">
+							<path d="M16.2072 16.59L11.6496 12L16.2072 7.41L14.8041 6L8.8335 12L14.8041 18L16.2072 16.59Z" fill="white"/>
+						</mask>
+						<g mask="url(#maskPrev)">
+							<rect x="0.579102" width="23.8823" height="24" fill="#FFFFFF"/>
+						</g>
+					</svg>
+				</div>
+				<div class="jp-swiper-button-next swiper-button-next">
+					<svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<mask id="maskNext" mask-type="alpha" maskUnits="userSpaceOnUse" x="8" y="6" width="8" height="12">
+							<path d="M8.59814 16.59L13.1557 12L8.59814 7.41L10.0012 6L15.9718 12L10.0012 18L8.59814 16.59Z" fill="white"/>
+						</mask>
+						<g mask="url(#maskNext)">
+							<rect x="0.34375" width="23.8822" height="24" fill="#FFFFFF"/>
+						</g>
+					</svg>
+				</div>
+			</div>
+			<!-- The main close buton -->
+			<div class="jp-carousel-close-hint">
+				<svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<mask id="maskClose" mask-type="alpha" maskUnits="userSpaceOnUse" x="5" y="5" width="15" height="14">
+						<path d="M19.3166 6.41L17.9135 5L12.3509 10.59L6.78834 5L5.38525 6.41L10.9478 12L5.38525 17.59L6.78834 19L12.3509 13.41L17.9135 19L19.3166 17.59L13.754 12L19.3166 6.41Z" fill="white"/>
+					</mask>
+					<g mask="url(#maskClose)">
+						<rect x="0.409668" width="23.8823" height="24" fill="#FFFFFF"/>
+					</g>
+				</svg>
+			</div>
+			<!-- Image info, comments and meta -->
+			<div class="jp-carousel-info">
+				<div class="jp-carousel-info-footer">
+					<div class="jp-carousel-pagination-container">
+						<div class="jp-swiper-pagination swiper-pagination"></div>
+						<div class="jp-carousel-pagination"></div>
+					</div>
+					<div class="jp-carousel-photo-title-container">
+						<div class="jp-carousel-photo-caption"></div>
+					</div>
+					<div class="jp-carousel-photo-icons-container">
+						<a href="#" class="jp-carousel-icon-btn jp-carousel-icon-info" aria-label="Sichtbarkeit von Fotometadaten ändern">
+							<span class="jp-carousel-icon">
+								<svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<mask id="maskInfo" mask-type="alpha" maskUnits="userSpaceOnUse" x="2" y="2" width="21" height="20">
+										<path fill-rule="evenodd" clip-rule="evenodd" d="M12.7537 2C7.26076 2 2.80273 6.48 2.80273 12C2.80273 17.52 7.26076 22 12.7537 22C18.2466 22 22.7046 17.52 22.7046 12C22.7046 6.48 18.2466 2 12.7537 2ZM11.7586 7V9H13.7488V7H11.7586ZM11.7586 11V17H13.7488V11H11.7586ZM4.79292 12C4.79292 16.41 8.36531 20 12.7537 20C17.142 20 20.7144 16.41 20.7144 12C20.7144 7.59 17.142 4 12.7537 4C8.36531 4 4.79292 7.59 4.79292 12Z" fill="white"/>
+									</mask>
+									<g mask="url(#maskInfo)">
+										<rect x="0.8125" width="23.8823" height="24" fill="#FFFFFF"/>
+									</g>
+								</svg>
+							</span>
+						</a>
+												<a href="#" class="jp-carousel-icon-btn jp-carousel-icon-comments" aria-label="Sichtbarkeit von Fotokommentaren ändern">
+							<span class="jp-carousel-icon">
+								<svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<mask id="maskComments" mask-type="alpha" maskUnits="userSpaceOnUse" x="2" y="2" width="21" height="20">
+										<path fill-rule="evenodd" clip-rule="evenodd" d="M4.3271 2H20.2486C21.3432 2 22.2388 2.9 22.2388 4V16C22.2388 17.1 21.3432 18 20.2486 18H6.31729L2.33691 22V4C2.33691 2.9 3.2325 2 4.3271 2ZM6.31729 16H20.2486V4H4.3271V18L6.31729 16Z" fill="white"/>
+									</mask>
+									<g mask="url(#maskComments)">
+										<rect x="0.34668" width="23.8823" height="24" fill="#FFFFFF"/>
+									</g>
+								</svg>
+
+								<span class="jp-carousel-has-comments-indicator" aria-label="Dieses Bild verfügt über Kommentare."></span>
+							</span>
+						</a>
+											</div>
+				</div>
+				<div class="jp-carousel-info-extra">
+					<div class="jp-carousel-info-content-wrapper">
+						<div class="jp-carousel-photo-title-container">
+							<div class="jp-carousel-photo-title"></div>
+						</div>
+						<div class="jp-carousel-comments-wrapper">
+															<div id="jp-carousel-comments-loading">
+									<span>Kommentare werden geladen …</span>
+								</div>
+								<div class="jp-carousel-comments"></div>
+								<div id="jp-carousel-comment-form-container">
+									<span id="jp-carousel-comment-form-spinner"><svg class="jetpack-spinner" width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><circle cx="50" cy="50" r="46" fill="none" stroke="#ddd" stroke-width="8"/><path d="M 50 4 A 46 46 0 0 1 96 50" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" dur="1.4s" from="0 50 50" to="360 50 50" repeatCount="indefinite"/></path></svg></span>
+									<div id="jp-carousel-comment-post-results"></div>
+																														<form id="jp-carousel-comment-form">
+												<label for="jp-carousel-comment-form-comment-field" class="screen-reader-text">Verfasse einen Kommentar&#160;&hellip;</label>
+												<textarea
+													name="comment"
+													class="jp-carousel-comment-form-field jp-carousel-comment-form-textarea"
+													id="jp-carousel-comment-form-comment-field"
+													placeholder="Verfasse einen Kommentar&#160;&hellip;"
+												></textarea>
+												<div id="jp-carousel-comment-form-submit-and-info-wrapper">
+													<div id="jp-carousel-comment-form-commenting-as">
+																													<fieldset>
+																<label for="jp-carousel-comment-form-email-field">E-Mail (Erforderlich)</label>
+																<input type="text" name="email" class="jp-carousel-comment-form-field jp-carousel-comment-form-text-field" id="jp-carousel-comment-form-email-field" />
+															</fieldset>
+															<fieldset>
+																<label for="jp-carousel-comment-form-author-field">Name (Erforderlich)</label>
+																<input type="text" name="author" class="jp-carousel-comment-form-field jp-carousel-comment-form-text-field" id="jp-carousel-comment-form-author-field" />
+															</fieldset>
+															<fieldset>
+																<label for="jp-carousel-comment-form-url-field">Website</label>
+																<input type="text" name="url" class="jp-carousel-comment-form-field jp-carousel-comment-form-text-field" id="jp-carousel-comment-form-url-field" />
+															</fieldset>
+																											</div>
+													<input
+														type="submit"
+														name="submit"
+														class="jp-carousel-comment-form-button"
+														id="jp-carousel-comment-form-button-submit"
+														value="Kommentar absenden" />
+												</div>
+											</form>
+																											</div>
+													</div>
+						<div class="jp-carousel-image-meta">
+							<div class="jp-carousel-title-and-caption">
+								<div class="jp-carousel-photo-info">
+									<div class="jp-carousel-caption" itemprop="caption description"></div>
+								</div>
+
+								<div class="jp-carousel-photo-description"></div>
+							</div>
+							<a class="jp-carousel-image-download" href="#" aria-label="Bild herunterladen" target="_blank" style="display: none;">
+								<svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<mask id="mask0" mask-type="alpha" maskUnits="userSpaceOnUse" x="3" y="3" width="19" height="18">
+										<path fill-rule="evenodd" clip-rule="evenodd" d="M5.84615 5V19H19.7775V12H21.7677V19C21.7677 20.1 20.8721 21 19.7775 21H5.84615C4.74159 21 3.85596 20.1 3.85596 19V5C3.85596 3.9 4.74159 3 5.84615 3H12.8118V5H5.84615ZM14.802 5V3H21.7677V10H19.7775V6.41L9.99569 16.24L8.59261 14.83L18.3744 5H14.802Z" fill="white"/>
+									</mask>
+									<g mask="url(#mask0)">
+										<rect x="0.870605" width="23.8823" height="24" fill="#FFFFFF"/>
+									</g>
+								</svg>
+								<span class="jp-carousel-download-text"></span>
+							</a>
+							<div class="jp-carousel-image-map" style="display: none;"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		</div>
+		
+	<script type="text/javascript">
+		(function () {
+			var wpcom_reblog = {
+				source: 'toolbar',
+
+				toggle_reblog_box_flair: function (obj_id, post_id) {
+
+					// Go to site selector. This will redirect to their blog if they only have one.
+					const postEndpoint = `https://wordpress.com/post`;
+
+					// Ideally we would use the permalink here, but fortunately this will be replaced with the 
+					// post permalink in the editor.
+					const originalURL = `${ document.location.href }?page_id=${ post_id }`; 
+					
+					const url =
+						postEndpoint +
+						'?url=' +
+						encodeURIComponent( originalURL ) +
+						'&is_post_share=true' +
+						'&v=5';
+
+					const redirect = function () {
+						if (
+							! window.open( url, '_blank' )
+						) {
+							location.href = url;
+						}
+					};
+
+					if ( /Firefox/.test( navigator.userAgent ) ) {
+						setTimeout( redirect, 0 );
+					} else {
+						redirect();
+					}
+				},
+			};
+
+			window.wpcom_reblog = wpcom_reblog;
+		})();
+	</script>
+<script id="twentysixteen-script-js-extra">
+var screenReaderText = {"expand":"Untermen\u00fc anzeigen","collapse":"Untermen\u00fc verbergen"};
+//# sourceURL=twentysixteen-script-js-extra
+</script>
+<script id="jetpack-carousel-js-extra">
+var jetpackSwiperLibraryPath = {"url":"/wp-content/mu-plugins/jetpack-plugin/moon/_inc/blocks/swiper.js"};
+var jetpackCarouselStrings = {"widths":[370,700,1000,1200,1400,2000],"is_logged_in":"","lang":"de","ajaxurl":"https://ziegeleigarten.ch/wp-admin/admin-ajax.php","nonce":"1945be0c99","display_exif":"1","display_comments":"1","single_image_gallery":"1","single_image_gallery_media_file":"","background_color":"black","comment":"Kommentar","post_comment":"Kommentar absenden","write_comment":"Verfasse einen Kommentar\u00a0\u2026","image_label":"Bild im Vollbildmodus \u00f6ffnen.","download_original":"Bild in Originalgr\u00f6\u00dfe anschauen \u003Cspan class=\"photo-size\"\u003E{0}\u003Cspan class=\"photo-size-times\"\u003E\u00d7\u003C/span\u003E{1}\u003C/span\u003E","no_comment_text":"Stelle bitte sicher, das du mit deinem Kommentar ein bisschen Text \u00fcbermittelst.","no_comment_email":"Bitte eine E-Mail-Adresse angeben, um zu kommentieren.","no_comment_author":"Bitte deinen Namen angeben, um zu kommentieren.","comment_post_error":"Dein Kommentar konnte leider nicht abgeschickt werden. Bitte versuche es sp\u00e4ter erneut.","comment_approved":"Dein Kommentar wurde freigegeben.","comment_unapproved":"Dein Kommentar wartet auf Freischaltung.","camera":"Kamera","aperture":"Blende","shutter_speed":"Verschlusszeit","focal_length":"Brennweite","copyright":"Copyright","comment_registration":"0","require_name_email":"1","login_url":"https://ziegeleigarten.wordpress.com/wp-login.php?redirect_to=https%3A%2F%2Fziegeleigarten.ch%2F","blog_id":"38393425","meta_data":["camera","aperture","shutter_speed","focal_length","copyright"],"loading_comments":"Kommentare werden geladen\u00a0\u2026","stats_query_args":"blog=38393425&v=wpcom&tz=0&user_id=0&subd=ziegeleigarten","is_public":"1"};
+//# sourceURL=jetpack-carousel-js-extra
+</script>
+<script crossorigin='anonymous' type='text/javascript'  src='/_static/??-eJyNjEEOwjAMBD9E6iIQhQPiKag1LjhN7Agnavk9PVAOPSCOs5pZGJNDlUySIT8okkEqHeRxHl7GUyYS8AY2cHKBZXC9YjHX81R528CfeV8EM6vYOorFpVDuLAaecmpx+DBEVYErC0JXONwA26cWo/D1lqGKLD9uF82NCTWucO4u8bxtTnXd7A+7o38Dir9mTA=='></script>
+<script id="wp-emoji-settings" type="application/json">
+{"baseUrl":"https://s0.wp.com/wp-content/mu-plugins/wpcom-smileys/twemoji/2/72x72/","ext":".png","svgUrl":"https://s0.wp.com/wp-content/mu-plugins/wpcom-smileys/twemoji/2/svg/","svgExt":".svg","source":{"concatemoji":"/wp-includes/js/wp-emoji-release.min.js?m=1783090810i&ver=7.2-alpha-63973"}}
+</script>
+<script type="module">
+/*! This file is auto-generated */
+var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof HTMLScriptElement))throw new Error("Element missing: "+e);const r=JSON.parse(t.text),s=(window._wpemojiSettings=r,"wpEmojiSettingsSupports"),o=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(s,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const r=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===r[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,r){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!r(e,"\ud83e\udec8")}return!1}function f(e,t,n,r){let a;const s=(a="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),o=(s.textBaseline="top",s.font="600 32px Arial",{});return e.forEach(e=>{o[e]=t(s,e,n,r)}),o}function a(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}r.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(s));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(o),u.toString(),c.toString(),p.toString()].join(",")+"));",r=new Blob([e],{type:"text/javascript"});const a=new Worker(URL.createObjectURL(r),{name:"wpTestEmojiSupports"});return void(a.onmessage=e=>{i(n=e.data),a.terminate(),t(n)})}catch(e){}i(n=f(o,u,c,p))}t(n)}).then(e=>{for(const n in e)r.supports[n]=e[n],r.supports.everything=r.supports.everything&&r.supports[n],"flag"!==n&&(r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&r.supports[n]);var t;r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&!r.supports.flag,r.supports.everything||((t=r.source||{}).concatemoji?a(t.concatemoji):t.wpemoji&&t.twemoji&&(a(t.twemoji),a(t.wpemoji)))});
+//# sourceURL=/wp-includes/js/wp-emoji-loader.min.js
+</script>
+<script src="//stats.wp.com/w.js?71" defer></script> <script type="text/javascript">
+_tkq = window._tkq || [];
+_stq = window._stq || [];
+_tkq.push(['storeContext', {'blog_id':'38393425','blog_tz':'0','user_lang':'de','blog_lang':'de','user_id':'0'}]);
+		// Prevent sending pageview tracking from WP-Admin pages.
+		_stq.push(['view', {'blog':'38393425','v':'wpcom','tz':'0','user_id':'0','post':'433','subd':'ziegeleigarten'}]);
+		_stq.push(['extra', {'crypt':'UE5tW3cvZGQ/JUs1UEo9WXFZM2k9fDlzc2JWP3g/R2k2Zl9zL3I1eDZXLkNUelosKz1LVThhaDFTPWIsZ11YSDZkJnZJRkorcmV6T05LWUhJak0rOTc5XV9nYit+flpnRU1XZ1JieV9+MlZRaVlILFJqTnFLMl05JW5EbVFqeHR0ZlRPa01OZzMyeWgwcC1EdW9FN0xrYk8lQzhxVi9zMVcvNFAsZjBEOWN1amkzK1M0MGVyUg=='}]);
+_stq.push([ 'clickTrackerInit', '38393425', '433' ]);
+</script>
+<noscript><img src="https://pixel.wp.com/b.gif?v=noscript" style="height:1px;width:1px;overflow:hidden;position:absolute;bottom:1px;" alt="" /></noscript>
+<meta id="bilmur" property="bilmur:data" content="" data-provider="wordpress.com" data-service="simple" data-site-tz="Etc/GMT-0" data-custom-props="{&quot;logged_in&quot;:&quot;0&quot;,&quot;wptheme&quot;:&quot;pub\/twentysixteen&quot;,&quot;wptheme_is_block&quot;:&quot;0&quot;}"   >
+		<script defer src="/wp-content/js/bilmur.min.js?i=19&amp;m=202643"></script> 	</body>
+</html>
