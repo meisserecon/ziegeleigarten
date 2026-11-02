@@ -1,24 +1,21 @@
 # ziegeleigarten.ch
 
-Static copy of ziegeleigarten.ch (formerly WordPress.com), hosted on GitHub Pages.
+Static website of ziegeleigarten.ch, hosted on GitHub Pages. It was migrated from WordPress.com
+in October 2026; all original URLs are kept, e.g. `/kontakt/`, `/2018/02/08/luftbild/` and
+`/wp-content/uploads/…` for images and PDFs.
 
-- `docs/` – the published site (GitHub Pages serves this folder). All original URLs are kept,
-  e.g. `/kontakt/`, `/2018/02/08/luftbild/` and `/wp-content/uploads/…` for images and PDFs.
-- `build/build.mjs` – the generator that produced `docs/` from the WordPress pages.
-- `build/static/` – stylesheet and fonts, copied to `docs/assets/`.
+- `docs/` – the website (GitHub Pages serves this folder). Each page is `<path>/index.html`.
+- `docs/assets/` – stylesheet, fonts and a few externally sourced images.
+- `tools/check-links.mjs` – checks that all local links and images in `docs/` resolve.
 
 ## Editing
 
-The site is plain HTML now, so small edits (rents, "vermietet", contact details) can be made
-directly in `docs/**/index.html`. Re-running the build would overwrite such edits, so only use
-it while the WordPress site is still online:
+Edit the HTML files in `docs/` directly. The page header, menu and footer are repeated in every
+file, so menu changes have to be made in all pages. Then preview and check:
 
 ```sh
-cd build
-npm install
-npm run refresh   # re-crawl ziegeleigarten.ch and rebuild docs/
-npm run check     # verify all local links and images
-npm run serve     # preview at http://localhost:3000
+npx serve docs                 # preview at http://localhost:3000
+node tools/check-links.mjs     # verify all local links and images
 ```
 
 ## GitHub Pages setup
